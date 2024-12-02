@@ -4,6 +4,8 @@ from django.http import HttpResponse
 from .forms import VentasForm, ComprasForm
 import pandas as pd
 from django.http import FileResponse
+import os
+from django.conf import settings
 def descargar_libro(request, tipo):
     if tipo == "ventas":
         path = "REGISTRO DE VENTAS 2024.xlsx"
@@ -42,12 +44,11 @@ def registro_ventas(request):
     else:
         form = VentasForm()
     return render(request, 'registro_ventas.html', {'form': form})
+
 def registro_compras(request):
     if request.method == "POST":
         form = ComprasForm(request.POST)
         if form.is_valid():
-            import os
-            from django.conf import settings
             compras_path = os.path.join(settings.BASE_DIR, "REGISTRO DE COMPRAS 2024.xlsx")
             wb = openpyxl.load_workbook(compras_path)
             
@@ -68,13 +69,29 @@ def registro_compras(request):
             else:
                 return HttpResponse(f"El libro no cubre el mes indicado: {nombre_hoja}", status=400)
             
-            # Buscar la primera fila vacía
-            for row in ws.iter_rows(min_row=5, max_row=ws.max_row+1):
-                if all(cell.value is None for cell in row):
-                    new_row = row[0].row
+            # Buscar la fila que contiene la fórmula de suma en la columna J
+            total_row = None
+            for row in ws.iter_rows(min_row=5, max_row=ws.max_row):
+                cell = row[9]  # Columna J es la décima columna (índice 9)
+                if cell.data_type == 'f' and 'SUM' in str(cell.value):
+                    total_row = cell.row
                     break
             
-            # Insertar los datos en la primera fila vacía
+            if total_row is None:
+                # Si no se encuentra la fila de totales, agregarla al final
+                total_row = ws.max_row + 1
+                ws[f"I{total_row}"] = 'Total'
+                ws[f"J{total_row}"] = f"=SUM(J5:J{total_row - 1})"
+                ws[f"K{total_row}"] = f"=SUM(K5:K{total_row - 1})"
+                ws[f"L{total_row}"] = f"=SUM(L5:L{total_row - 1})"
+
+            # Determinar la nueva fila para insertar datos (justo antes de la fila de totales)
+            new_row = total_row
+
+            # Insertar una nueva fila antes de la fila de totales
+            ws.insert_rows(new_row)
+
+            # Insertar los datos en la nueva fila
             ws[f"B{new_row}"] = form.cleaned_data['numero_operacion']
             ws[f"C{new_row}"] = form.cleaned_data['tipo_documento']
             ws[f"D{new_row}"] = form.cleaned_data['tipo_compra']
@@ -94,8 +111,8 @@ def registro_compras(request):
         form = ComprasForm()
     return render(request, 'registro_compras.html', {'form': form})
 def resumen_datos(request):
-    ventas_path = "ruta/a/REGISTRO_DE_VENTAS.xlsx"
-    compras_path = "ruta/a/REGISTRO_DE_COMPRAS.xlsx"
+    ventas_path = "REGISTRO_DE_VENTAS.xlsx"
+    compras_path = "REGISTRO_DE_COMPRAS.xlsx"
 
     # Leer archivos
     ventas_df = pd.read_excel(ventas_path, skiprows=4)  # Ajusta si es necesario
