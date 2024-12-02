@@ -1,8 +1,11 @@
-from django.contrib import admin
 from django.urls import path
-from ExcelExport.views import excel_view
+from ExcelExport import views
+from django.http import FileResponse
+from django.http import HttpResponse
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
-    path("excel/", excel_view, name="excel_view"),
+    path('ventas/', views.registro_ventas, name='registro_ventas'),
+    path('compras/', views.registro_compras, name='registro_compras'),
+    path('descargar/<str:tipo>/', views.descargar_libro, name='descargar_libro'),
+
 ]

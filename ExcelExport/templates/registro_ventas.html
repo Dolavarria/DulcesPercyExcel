@@ -1,0 +1,10 @@
+<!-- registro_ventas.html -->
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Guardar Registro de Ventas</button>
+</form>
+<a href="{% url 'descargar_libro' 'ventas' %}" class="btn btn-success">Descargar Libro de Ventas</a>
+<h1>Resumen del mes</h1>
+<p>Total Ventas: ${{ total_ventas }}</p>
+<p>Total Compras: ${{ total_compras }}</p>

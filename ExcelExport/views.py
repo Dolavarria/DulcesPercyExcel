@@ -1,142 +1,111 @@
-from django.shortcuts import render
-from .forms import DataForm
-from openpyxl import Workbook, load_workbook
-from openpyxl.styles import Border, Side
-from datetime import datetime
+import openpyxl
+from django.shortcuts import render, redirect
 from django.http import HttpResponse
-import os
-import io  # Ensure this import is present
-from django.conf import settings
-# Define the paths to the Excel files
-archivo_registro = 'registro.xlsx'
-archivo_compras = 'REGISTRO DE COMPRAS 2024.xlsx'
-meses = {
-    2: 'FEB',
-    3: 'MAR',
-    4: 'ABR',
-    5: 'MAY',
-    6: 'JUN',
-    7: 'JUL',
-    8: 'AGO',
-    9: 'SEP'
-}
-border = Border(
-    left=Side(border_style='thin', color='000000'),
-    right=Side(border_style='thin', color='000000'),
-    top=Side(border_style='thin', color='000000'),
-    bottom=Side(border_style='thin', color='000000')
-)
-
-def inicializar_registro():
-    if not os.path.exists(archivo_registro):
-        wb = Workbook()
-        ws = wb.active
-        ws.append(["Razon Social", "RUT", "Direccion", "Tipo Comprobante", "Fecha", "Codigo Cuenta", "Detalle", "Monto"])
-        wb.save(archivo_registro)
-
-def inicializar_compras():
-    if not os.path.exists(archivo_compras):
-        wb = Workbook()
-        sheet_names = ['FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP']
-        for idx, sheet in enumerate(sheet_names):
-            if idx == 0:
-                ws = wb.active
-                ws.title = sheet
-            else:
-                ws = wb.create_sheet(title=sheet)
-            ws.append([
-                "N°", "Tipo Doc", "Tipo Compra", "RUT Proveedor", "Razon Social",
-                "Folio", "Fecha Docto", "Monto Exento", "Monto Neto",
-                "Monto IVA Recuperable", "Monto Total"
-            ])
-            # Apply border to header row
-            for col in range(1, 12):
-                ws.cell(row=1, column=col).border = border
-        wb.save(archivo_compras)
-
-def obtener_proximo_numero(ws):
-    if ws.max_row < 2:
-        return 1
+from .forms import VentasForm, ComprasForm
+import pandas as pd
+from django.http import FileResponse
+def descargar_libro(request, tipo):
+    if tipo == "ventas":
+        path = "REGISTRO DE VENTAS 2024.xlsx"
+    elif tipo == "compras":
+        path = "REGISTRO DE COMPRAS 2024.xlsx"
     else:
-        ultimo_num = ws.cell(row=ws.max_row, column=2).value  # Adjusted column index
-        return ultimo_num + 1 if isinstance(ultimo_num, int) else 1
+        return HttpResponse("Tipo de archivo no válido.", status=400)
 
-def excel_view(request):
-    if request.method == 'POST':
-        form = DataForm(request.POST)
+    return FileResponse(open(path, 'rb'), as_attachment=True, filename=f"{tipo}_actualizado.xlsx")
+def registro_ventas(request):
+    if request.method == "POST":
+        form = VentasForm(request.POST)
         if form.is_valid():
-            # Extract data from the form
-            razon_social = form.cleaned_data['razon_social']
-            rut = form.cleaned_data['rut']
-            direccion = form.cleaned_data['direccion']
-            tipo_comprobante = form.cleaned_data['tipo_comprobante']
-            fecha_obj = form.cleaned_data['fecha']
-            fecha = fecha_obj.strftime('%d/%m/%Y')
-            codigo_cuenta = form.cleaned_data['codigo_cuenta']
-            detalle = form.cleaned_data['detalle']
-            monto = form.cleaned_data['monto']
+            # Cargar archivo Excel
+            ventas_path = "REGISTRO DE VENTAS 2024.xlsx"  # Actualiza con la ruta correcta
+            wb = openpyxl.load_workbook(ventas_path)
+            ws = wb.active
 
-            # Initialize Excel files if they don't exist
-            inicializar_registro()
-            inicializar_compras()
+            # Buscar la primera fila vacía
+            for row in ws.iter_rows(min_row=5, max_row=ws.max_row+1):
+                if all(cell.value is None for cell in row):
+                    new_row = row[0].row
+                    break
+            
+            # Insertar los datos en la primera fila vacía
+            ws[f"B{new_row}"] = form.cleaned_data['tipo_documento']
+            ws[f"C{new_row}"] = form.cleaned_data['total_documentos']
+            ws[f"D{new_row}"] = form.cleaned_data['monto_exento'] or 0
+            ws[f"E{new_row}"] = form.cleaned_data['monto_neto']
+            ws[f"F{new_row}"] = form.cleaned_data['monto_iva']
+            ws[f"G{new_row}"] = form.cleaned_data['monto_total']
 
-            # Save data to 'registro.xlsx'
-            wb_registro = load_workbook(archivo_registro)
-            ws_registro = wb_registro.active
-            tipo = 'Debe' if tipo_comprobante == '1' else 'Haber'
-            ws_registro.append([
-                razon_social, rut, direccion, tipo, fecha,
-                codigo_cuenta, detalle, monto
-            ])
-            wb_registro.save(archivo_registro)
-
-            # Determine the sheet based on the month
-            mes = fecha_obj.month
-            hoja = meses.get(mes)
-            if not hoja:
-                return HttpResponse(f"Mes {mes} no soportado en 'REGISTRO DE COMPRAS 2024.xlsx'.")
-
-            # Save data to 'REGISTRO DE COMPRAS 2024.xlsx'
-            wb_compras = load_workbook(archivo_compras)
-            ws_compras = wb_compras[hoja]
-
-            proximo_num = obtener_proximo_numero(ws_compras)
-            monto_neto = round(monto * 0.81, 2)
-            monto_iva = round(monto * 0.19, 2)
-            monto_total = monto
-
-            ws_compras.append([
-                "",                      # Columna A vacía
-                proximo_num,             # N°
-                33,                      # Tipo Doc
-                "Del Giro",              # Tipo Compra
-                rut,                     # RUT Proveedor
-                razon_social,            # Razón Social
-                codigo_cuenta,           # Folio
-                fecha,                   # Fecha Docto
-                "",                      # Monto Exento
-                monto_neto,              # Monto Neto
-                monto_iva,               # Monto IVA Recuperable
-                monto_total              # Monto Total
-            ])
-
-            # Apply borders to the new row
-            new_row = ws_compras.max_row
-            for col in range(1, 12):  # Columns A to K
-                cell = ws_compras.cell(row=new_row, column=col)
-                cell.border = border
-
-            # Save the updated 'REGISTRO DE COMPRAS 2024.xlsx'
-            wb_compras.save(archivo_compras)
-
-            # Now, return the updated 'REGISTRO DE COMPRAS 2024.xlsx' as a downloadable file
-            with open(archivo_compras, 'rb') as fh:
-                response = HttpResponse(
-                    fh.read(),
-                    content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                )
-                response['Content-Disposition'] = 'attachment; filename="REGISTRO DE COMPRAS 2024.xlsx"'
-                return response
+            # Guardar el archivo
+            wb.save(ventas_path)
+            return redirect('registro_ventas')
     else:
-        form = DataForm()
-    return render(request, 'excel_form.html', {'form': form})
+        form = VentasForm()
+    return render(request, 'registro_ventas.html', {'form': form})
+def registro_compras(request):
+    if request.method == "POST":
+        form = ComprasForm(request.POST)
+        if form.is_valid():
+            import os
+            from django.conf import settings
+            compras_path = os.path.join(settings.BASE_DIR, "REGISTRO DE COMPRAS 2024.xlsx")
+            wb = openpyxl.load_workbook(compras_path)
+            
+            # Obtener el mes de 'fecha_documento'
+            fecha_doc = form.cleaned_data['fecha_documento']
+            mes_numero = fecha_doc.month
+            # Mapeo de mes a nombre de hoja
+            meses = {
+                1: 'ENER', 2: 'FEB', 3: 'MAR', 4: 'ABR',
+                5: 'MAY', 6: 'JUN', 7: 'JUL', 8: 'AGO',
+                9: 'SEP', 10: 'OCT', 11: 'NOV', 12: 'DIC'
+            }
+            nombre_hoja = meses.get(mes_numero)
+            
+            # Verificar si la hoja existe
+            if nombre_hoja in wb.sheetnames:
+                ws = wb[nombre_hoja]
+            else:
+                return HttpResponse(f"El libro no cubre el mes indicado: {nombre_hoja}", status=400)
+            
+            # Buscar la primera fila vacía
+            for row in ws.iter_rows(min_row=5, max_row=ws.max_row+1):
+                if all(cell.value is None for cell in row):
+                    new_row = row[0].row
+                    break
+            
+            # Insertar los datos en la primera fila vacía
+            ws[f"B{new_row}"] = form.cleaned_data['numero_operacion']
+            ws[f"C{new_row}"] = form.cleaned_data['tipo_documento']
+            ws[f"D{new_row}"] = form.cleaned_data['tipo_compra']
+            ws[f"E{new_row}"] = form.cleaned_data['rut_proveedor']
+            ws[f"F{new_row}"] = form.cleaned_data['razon_social']
+            ws[f"G{new_row}"] = form.cleaned_data['folio']
+            ws[f"H{new_row}"] = form.cleaned_data['fecha_documento']
+            ws[f"I{new_row}"] = form.cleaned_data['monto_exento'] or 0
+            ws[f"J{new_row}"] = form.cleaned_data['monto_neto']
+            ws[f"K{new_row}"] = form.cleaned_data['monto_iva']
+            ws[f"L{new_row}"] = form.cleaned_data['monto_total']
+
+            # Guardar el archivo
+            wb.save(compras_path)
+            return redirect('registro_compras')
+    else:
+        form = ComprasForm()
+    return render(request, 'registro_compras.html', {'form': form})
+def resumen_datos(request):
+    ventas_path = "ruta/a/REGISTRO_DE_VENTAS.xlsx"
+    compras_path = "ruta/a/REGISTRO_DE_COMPRAS.xlsx"
+
+    # Leer archivos
+    ventas_df = pd.read_excel(ventas_path, skiprows=4)  # Ajusta si es necesario
+    compras_df = pd.read_excel(compras_path, skiprows=4)  # Ajusta si es necesario
+
+    # Sumar montos
+    total_ventas = ventas_df['Monto Total'].sum()
+    total_compras = compras_df['Monto Total'].sum()
+
+    return render(request, 'registros/resumen.html', {
+        'total_ventas': total_ventas,
+        'total_compras': total_compras
+    })
