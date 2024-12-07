@@ -17,6 +17,4 @@ class ComprasForm(forms.Form):
     folio = forms.IntegerField(label="Folio")
     fecha_documento = forms.DateField(label="Fecha del Documento", widget=forms.DateInput(attrs={'type': 'date'}))
     monto_exento = forms.DecimalField(label="Monto Exento", max_digits=10, decimal_places=2, required=False)
-    monto_neto = forms.DecimalField(label="Monto Neto", max_digits=10, decimal_places=2)
-    monto_iva = forms.DecimalField(label="Monto IVA Recuperable", max_digits=10, decimal_places=2)
     monto_total = forms.DecimalField(label="Monto Total", max_digits=10, decimal_places=2)

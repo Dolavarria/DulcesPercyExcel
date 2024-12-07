@@ -6,6 +6,7 @@ import pandas as pd
 from django.http import FileResponse
 import os
 from django.conf import settings
+from decimal import Decimal
 def descargar_libro(request, tipo):
     if tipo == "ventas":
         path = "REGISTRO DE VENTAS 2024.xlsx"
@@ -84,13 +85,19 @@ def registro_compras(request):
                 ws[f"J{total_row}"] = f"=SUM(J5:J{total_row - 1})"
                 ws[f"K{total_row}"] = f"=SUM(K5:K{total_row - 1})"
                 ws[f"L{total_row}"] = f"=SUM(L5:L{total_row - 1})"
-
+            else:
+                # Si ya existe la fórmula de suma, actualiza el rango para incluir la nueva fila
+                for col in ['J', 'K', 'L']:
+                    formula = ws[f"{col}{total_row}"].value
+                    if formula:
+                        # Actualizar el rango de la fórmula para incluir la nueva fila
+                        new_formula = formula.replace(f"J{total_row - 1}", f"J{total_row}")
+                        ws[f"{col}{total_row}"].value = new_formula
+            
             # Determinar la nueva fila para insertar datos (justo antes de la fila de totales)
             new_row = total_row
-
             # Insertar una nueva fila antes de la fila de totales
             ws.insert_rows(new_row)
-
             # Insertar los datos en la nueva fila
             ws[f"B{new_row}"] = form.cleaned_data['numero_operacion']
             ws[f"C{new_row}"] = form.cleaned_data['tipo_documento']
@@ -100,8 +107,8 @@ def registro_compras(request):
             ws[f"G{new_row}"] = form.cleaned_data['folio']
             ws[f"H{new_row}"] = form.cleaned_data['fecha_documento']
             ws[f"I{new_row}"] = form.cleaned_data['monto_exento'] or 0
-            ws[f"J{new_row}"] = form.cleaned_data['monto_neto']
-            ws[f"K{new_row}"] = form.cleaned_data['monto_iva']
+            ws[f"J{new_row}"] = form.cleaned_data['monto_total'] - (form.cleaned_data['monto_total'] * Decimal('0.19'))
+            ws[f"K{new_row}"] = form.cleaned_data['monto_total'] * Decimal('0.19') 
             ws[f"L{new_row}"] = form.cleaned_data['monto_total']
 
             # Guardar el archivo
@@ -110,19 +117,6 @@ def registro_compras(request):
     else:
         form = ComprasForm()
     return render(request, 'registro_compras.html', {'form': form})
-def resumen_datos(request):
-    ventas_path = "REGISTRO_DE_VENTAS.xlsx"
-    compras_path = "REGISTRO_DE_COMPRAS.xlsx"
 
-    # Leer archivos
-    ventas_df = pd.read_excel(ventas_path, skiprows=4)  # Ajusta si es necesario
-    compras_df = pd.read_excel(compras_path, skiprows=4)  # Ajusta si es necesario
-
-    # Sumar montos
-    total_ventas = ventas_df['Monto Total'].sum()
-    total_compras = compras_df['Monto Total'].sum()
-
-    return render(request, 'registros/resumen.html', {
-        'total_ventas': total_ventas,
-        'total_compras': total_compras
-    })
+def libro_diario(request):
+   return 1+1
