@@ -1,0 +1,17 @@
+<!-- ExcelExport/templates/libro_diario.html -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Libro Diario</title>
+</head>
+<body>
+    <h1>Ingresar Registro al Libro Diario</h1>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Guardar en Libro Diario</button>
+    </form>
+    <a href="{% url 'descargar_libro' 'libro_diario' %}">Descargar Libro Diario</a>
+</body>
+</html>

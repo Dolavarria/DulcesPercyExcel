@@ -1,7 +1,7 @@
 import openpyxl
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
-from .forms import VentasForm, ComprasForm
+from .forms import VentasForm, ComprasForm, LibroDiarioForm
 import pandas as pd
 from django.http import FileResponse
 import os
@@ -9,13 +9,21 @@ from django.conf import settings
 from decimal import Decimal
 def descargar_libro(request, tipo):
     if tipo == "ventas":
-        path = "REGISTRO DE VENTAS 2024.xlsx"
+        path = os.path.join(settings.BASE_DIR, "REGISTRO DE VENTAS 2024.xlsx")
+        filename = "REGISTRO DE VENTAS 2024.xlsx"
     elif tipo == "compras":
-        path = "REGISTRO DE COMPRAS 2024.xlsx"
+        path = os.path.join(settings.BASE_DIR, "REGISTRO DE COMPRAS 2024.xlsx")
+        filename = "REGISTRO DE COMPRAS 2024.xlsx"
+    elif tipo == "libro_diario":
+        path = os.path.join(settings.BASE_DIR, "LDE.xlsx")
+        filename = "LDE.xlsx"
     else:
         return HttpResponse("Tipo de archivo no válido.", status=400)
 
-    return FileResponse(open(path, 'rb'), as_attachment=True, filename=f"{tipo}_actualizado.xlsx")
+    if os.path.exists(path):
+        return FileResponse(open(path, 'rb'), as_attachment=True, filename=filename)
+    else:
+        return HttpResponse("El archivo no existe.", status=404)
 def registro_ventas(request):
     if request.method == "POST":
         form = VentasForm(request.POST)
@@ -119,4 +127,78 @@ def registro_compras(request):
     return render(request, 'registro_compras.html', {'form': form})
 
 def libro_diario(request):
-   return 1+1
+    if request.method == "POST":
+        form = LibroDiarioForm(request.POST)
+        if form.is_valid():
+            lde_path = os.path.join(settings.BASE_DIR, "LDE.xlsx")
+            wb = openpyxl.load_workbook(lde_path)
+            ws = wb.active
+
+            # Buscar la última fila con datos reales a partir de la fila 3
+            last_data_row = None
+            for row in range(3, ws.max_row + 1):
+                cell_value = ws[f"A{row}"].value  # Usamos la columna 'A' (fecha) como referencia
+                if cell_value is None:
+                    last_data_row = row - 1  # La fila anterior tiene datos
+                    break
+            else:
+                # Si no hay filas vacías hasta el final, la última fila con datos es ws.max_row
+                last_data_row = ws.max_row
+
+            # Determinar la nueva fila para insertar datos
+            new_row = last_data_row + 1
+
+            # Calcular el total (suma de debe y haber)
+            debe = form.cleaned_data['debe'] or Decimal('0')
+            haber = form.cleaned_data['haber'] or Decimal('0')
+
+            # Obtener 'Comp' inicial (primera letra del tipo de movimiento)
+            tipo_movimiento = form.cleaned_data['tipo_movimiento']
+            comp = tipo_movimiento[0].upper()  # 'T', 'E', 'I'
+
+            # Calcular 'N°' correspondiente al 'Comp' actual
+            # Inicializamos el contador en 1 si no hay registros previos
+            comp_numbers = []
+            for row in range(3, last_data_row + 1):
+                cell_comp = ws[f"B{row}"].value  # Columna 'B' (Comp)
+                cell_number = ws[f"C{row}"].value  # Columna 'C' (N°)
+                if cell_comp == comp and isinstance(cell_number, int):
+                    comp_numbers.append(cell_number)
+            if comp_numbers:
+                next_number = max(comp_numbers) + 1
+            else:
+                next_number = 1
+
+            # Insertar los datos en la nueva fila
+            ws[f"A{new_row}"] = form.cleaned_data['fecha']
+            ws[f"B{new_row}"] = comp  # Columna 'Comp'
+            ws[f"C{new_row}"] = next_number  # Columna 'N°'
+            ws[f"D{new_row}"] = form.cleaned_data['nombre_cuenta']
+            ws[f"E{new_row}"] = form.cleaned_data['glosa']
+            ws[f"F{new_row}"] = debe
+            ws[f"G{new_row}"] = haber
+
+            # Actualizar las fórmulas en F1 y G1
+            ws['F1'] = f"=SUM(F3:F{new_row})"
+            ws['G1'] = f"=SUM(G3:G{new_row})"
+
+            # Guardar el archivo Excel
+            wb.save(lde_path)
+            return redirect('libro_diario')
+    else:
+        form = LibroDiarioForm()
+    return render(request, 'libro_diario.html', {'form': form})
+
+def home(request):
+    return render(request, 'home.html')
+# ExcelExport/views.py
+
+def ver_registro(request):
+    # Lista de libros disponibles
+    libros = [
+        {'nombre': 'Registro de Ventas 2024', 'tipo': 'ventas'},
+        {'nombre': 'Registro de Compras 2024', 'tipo': 'compras'},
+        {'nombre': 'Libro Diario', 'tipo': 'libro_diario'},
+        # Puedes agregar más libros si los tienes
+    ]
+    return render(request, 'ver_registro.html', {'libros': libros})

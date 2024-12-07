@@ -1,0 +1,19 @@
+<!-- ExcelExport/templates/home.html -->
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Inicio</title>
+    <style>
+        /* ... estilos existentes ... */
+    </style>
+</head>
+<body>
+    <img src="{% static 'dulcespercy.jpg' %}" alt="Dulces Percy Logo">
+    <div>
+        <!-- Cambiamos 'comprobante_contable' por 'libro_diario' -->
+        <a href="{% url 'libro_diario' %}" class="button">Comprobante Contable</a>
+        <a href="{% url 'ver_registro' %}" class="button">Ver Registro</a>
+    </div>
+</body>
+</html>

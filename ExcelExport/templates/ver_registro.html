@@ -1,0 +1,18 @@
+<!-- ExcelExport/templates/ver_registro.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ver Registro</title>
+</head>
+<body>
+    <h1>Descargar Libros</h1>
+    <ul>
+        {% for libro in libros %}
+        <li class="libro">
+            {{ libro.nombre }}
+            <a href="{% url 'descargar_libro' libro.tipo %}" class="button">Descargar</a>
+        </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

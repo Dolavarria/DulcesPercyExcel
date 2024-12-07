@@ -18,3 +18,19 @@ class ComprasForm(forms.Form):
     fecha_documento = forms.DateField(label="Fecha del Documento", widget=forms.DateInput(attrs={'type': 'date'}))
     monto_exento = forms.DecimalField(label="Monto Exento", max_digits=10, decimal_places=2, required=False)
     monto_total = forms.DecimalField(label="Monto Total", max_digits=10, decimal_places=2)
+
+
+class LibroDiarioForm(forms.Form):
+    fecha = forms.DateField(label="Fecha", widget=forms.DateInput(attrs={'type': 'date'}))
+    tipo_movimiento = forms.ChoiceField(
+        label="Tipo de Movimiento",
+        choices=[
+            ('Traspaso', 'Traspaso'),
+            ('Egreso', 'Egreso'),
+            ('Ingreso', 'Ingreso'),
+        ]
+    )
+    nombre_cuenta = forms.CharField(label="Nombre de Cuenta", max_length=100)
+    glosa = forms.CharField(label="Glosa o Detalle", max_length=200)
+    debe = forms.DecimalField(label="Debe", max_digits=15, decimal_places=2, required=False)
+    haber = forms.DecimalField(label="Haber", max_digits=15, decimal_places=2, required=False)
