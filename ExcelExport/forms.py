@@ -20,17 +20,43 @@ class ComprasForm(forms.Form):
     monto_total = forms.DecimalField(label="Monto Total", max_digits=10, decimal_places=2)
 
 
+from django import forms
+
 class LibroDiarioForm(forms.Form):
-    fecha = forms.DateField(label="Fecha", widget=forms.DateInput(attrs={'type': 'date'}))
+    fecha = forms.DateField(
+        label="Fecha",
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
+    )
     tipo_movimiento = forms.ChoiceField(
         label="Tipo de Movimiento",
         choices=[
             ('Traspaso', 'Traspaso'),
             ('Egreso', 'Egreso'),
             ('Ingreso', 'Ingreso'),
-        ]
+        ],
+        widget=forms.Select(attrs={'class': 'form-control'})
     )
-    nombre_cuenta = forms.CharField(label="Nombre de Cuenta", max_length=100)
-    glosa = forms.CharField(label="Glosa o Detalle", max_length=200)
-    debe = forms.DecimalField(label="Debe", max_digits=15, decimal_places=2, required=False)
-    haber = forms.DecimalField(label="Haber", max_digits=15, decimal_places=2, required=False)
+    nombre_cuenta = forms.CharField(
+        label="Nombre de Cuenta",
+        max_length=100,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    glosa = forms.CharField(
+        label="Glosa o Detalle",
+        max_length=200,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    debe = forms.DecimalField(
+        label="Debe",
+        max_digits=15,
+        decimal_places=2,
+        required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
+    )
+    haber = forms.DecimalField(
+        label="Haber",
+        max_digits=15,
+        decimal_places=2,
+        required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
+    )
