@@ -12,15 +12,14 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
             margin: 0;
         }
         .container {
             background-color: white;
-            padding: 30px;
+            padding: 45px;
             border-radius: 10px;
             box-shadow: 0 6px 10px rgba(0, 0, 0, 0.1);
-            max-width: 400px;
+            max-width: 350px;
             width: 100%;
         }
         .logo {
@@ -70,7 +69,7 @@
         <div class="header">
             <img src="{% static 'dulcespercy.jpg' %}" alt="Dulces Percy Logo" class="logo">
         </div>
-        <h4 class="text-center mb-4">Ingresar Registro al Libro Diario</h4>
+        <h4 class="text-center mb-4">Añadir Registro al Libro Diario</h4>
         <form method="post">
             {% csrf_token %}
             {{ form.as_p }}
