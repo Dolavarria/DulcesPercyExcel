@@ -1,17 +1,103 @@
+{% load static %}
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <title>Ver Registro</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ver Registro - Dulces Percy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f9f9f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        .logo {
+            width: 150px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            margin-bottom: 25px;
+            color: #333;
+        }
+        .libro {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+        .libro:hover {
+            background-color: #f1f1f1;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .libro span {
+            font-size: 16px;
+            color: #555;
+        }
+        .button {
+            padding: 8px 15px;
+            font-size: 14px;
+            text-decoration: none;
+            color: #ffffff;
+            background-color: #28a745;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .button:hover {
+            background-color: #218838;
+        }
+        .btn-back {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            color: #ffffff;
+            background-color: #2C2C2C;
+            border: none;
+            border-radius: 10px;
+            text-decoration: none;
+            transition: background-color 0.3s;
+        }
+        .btn-back:hover {
+            background-color: #457b9d;
+        }
+    </style>
 </head>
 <body>
-    <h1>Descargar Libros</h1>
-    <ul>
-        {% for libro in libros %}
-        <li class="libro">
-            {{ libro.nombre }}
-            <a href="{% url 'descargar_libro' libro.tipo %}" class="button">Descargar</a>
-        </li>
-        {% endfor %}
-    </ul>
+    <div class="container">
+        <!-- Logo de Dulces Percy -->
+        <img src="{% static 'dulcespercy.jpg' %}" alt="Dulces Percy Logo" class="logo">
+        
+        <!-- Título de la Página -->
+        <h1>Descargar Libros</h1>
+        
+        <!-- Lista de Libros con Botones de Descarga -->
+        <div>
+            {% for libro in libros %}
+            <div class="libro">
+                <span>{{ libro.nombre }}</span>
+                <a href="{% url 'descargar_libro' libro.tipo %}" class="button">Descargar</a>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <a href="{% url 'home' %}" class="btn-back">Volver</a>
+    </div>
 </body>
 </html>
