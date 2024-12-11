@@ -1,4 +1,7 @@
 from django import forms
+import os
+import openpyxl
+from django.conf import settings
 
 class VentasForm(forms.Form):
     tipo_documento = forms.CharField(label="Tipo de Documento", max_length=50)
@@ -20,7 +23,6 @@ class ComprasForm(forms.Form):
     monto_total = forms.DecimalField(label="Monto Total", max_digits=10, decimal_places=2)
 
 
-from django import forms
 
 class LibroDiarioForm(forms.Form):
     fecha = forms.DateField(
@@ -36,11 +38,11 @@ class LibroDiarioForm(forms.Form):
         ],
         widget=forms.Select(attrs={'class': 'form-control'})
     )
-    nombre_cuenta = forms.CharField(
-        label="Nombre de Cuenta",
-        max_length=100,
-        widget=forms.TextInput(attrs={'class': 'form-control'})
-    )
+    nombre_cuenta = forms.ChoiceField(
+        choices=[],
+        widget=forms.Select(attrs={'class': 'form-control'})
+    
+        )  # Cambiado a ChoiceField
     glosa = forms.CharField(
         label="Glosa o Detalle",
         max_length=200,
@@ -60,3 +62,29 @@ class LibroDiarioForm(forms.Form):
         required=False,
         widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
+    def __init__(self, *args, **kwargs):
+        super(LibroDiarioForm, self).__init__(*args, **kwargs)
+        import openpyxl
+        import os
+        from django.conf import settings
+
+        contab_path = os.path.join(settings.BASE_DIR, "Contab 2024.xlsx")
+        if os.path.exists(contab_path):
+            wb = openpyxl.load_workbook(contab_path)
+            if 'CUENTAS' in wb.sheetnames:
+                cuentas_sheet = wb['CUENTAS']
+                opciones = []
+                for row in cuentas_sheet.iter_rows(min_row=6):
+                    codigo = row[1].value  # Columna B (índice 1)
+                    cuenta = row[4].value  # Columna E (índice 4)
+                    if codigo and cuenta:
+                        codigo_formateado = int(codigo)
+                        opcion = f"{codigo_formateado}- {cuenta}"
+                        opciones.append((opcion, opcion))
+                self.fields['nombre_cuenta'].choices = opciones
+            else:
+                print("La hoja 'CUENTAS' no existe en el libro.")
+                self.fields['nombre_cuenta'].choices = []
+        else:
+            print("El archivo 'Contab 2024.xlsx' no existe.")
+            self.fields['nombre_cuenta'].choices = []

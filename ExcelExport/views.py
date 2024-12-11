@@ -61,7 +61,7 @@ def registro_ventas(request):
         form = VentasForm(request.POST)
         if form.is_valid():
             # Cargar archivo Excel
-            ventas_path = "REGISTRO DE VENTAS 2024.xlsx"  # Actualiza con la ruta correcta
+            ventas_path = "REGISTRO DE VENTAS 2024.xlsx" 
             wb = openpyxl.load_workbook(ventas_path)
             ws = wb.active
 
@@ -223,7 +223,6 @@ def libro_diario(request):
 
 def home(request):
     return render(request, 'home.html')
-# ExcelExport/views.py
 
 def ver_registro(request):
     # Lista de libros disponibles

@@ -10,5 +10,4 @@ urlpatterns = [
     path('librodiario/', views.libro_diario, name='libro_diario'),
     path('', views.home, name='home'),
     path('registro/', views.ver_registro, name='ver_registro'),
-
 ]
