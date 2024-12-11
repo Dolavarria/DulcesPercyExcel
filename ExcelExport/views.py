@@ -9,6 +9,9 @@ from django.conf import settings
 from decimal import Decimal
 from datetime import datetime
 from io import BytesIO
+from itertools import zip_longest  
+
+
 def descargar_libro(request, tipo):
     if tipo == "ventas":
         path = os.path.join(settings.BASE_DIR, "REGISTRO DE VENTAS 2024.xlsx")
@@ -38,9 +41,6 @@ def descargar_libro(request, tipo):
 
         for row in balance_sheet.iter_rows(values_only=True):
             new_ws.append(row)
-
-        # Guardar el nuevo libro en un objeto BytesIO
-        from io import BytesIO
         output = BytesIO()
         new_wb.save(output)
         output.seek(0)
@@ -171,7 +171,7 @@ def libro_diario(request):
             # Buscar la última fila con datos reales a partir de la fila 3
             last_data_row = None
             for row in range(3, ws.max_row + 1):
-                cell_value = ws.cell(row=row, column=1).value  # Columna 'A' para fecha
+                cell_value = ws.cell(row=row, column=1).value  
                 if cell_value is None:
                     last_data_row = row - 1
                     break
@@ -186,28 +186,26 @@ def libro_diario(request):
             tipo_movimientos = request.POST.getlist('tipo_movimiento')
             nombre_cuentas = request.POST.getlist('nombre_cuenta')
             glosas = request.POST.getlist('glosa')
-            debes = request.POST.getlist('debe')
-            habers = request.POST.getlist('haber')
+            debes = request.POST.getlist('debe_hidden')
+            habers = request.POST.getlist('haber_hidden')
 
-            # Insertar cada registro en el Excel
-            for i in range(len(fechas)):
-                fecha = fechas[i]
+            # Insertar cada registro en el Excel utilizando zip_longest para evitar IndexError
+            for fecha, tipo_movimiento, nombre_cuenta, glosa, debe, haber in zip_longest(
+                fechas, tipo_movimientos, nombre_cuentas, glosas, debes, habers, fillvalue='0'
+            ):
                 fecha_formateada = datetime.strptime(fecha, '%Y-%m-%d').strftime('%d-%m-%Y')
 
-                tipo_movimiento = tipo_movimientos[i]
-                nombre_cuenta = nombre_cuentas[i]
-                glosa = glosas[i]
-                debe = Decimal(debes[i]) if debes[i] else Decimal('0')
-                haber = Decimal(habers[i]) if habers[i] else Decimal('0')
+                debe = Decimal(debe) if debe else Decimal('0')
+                haber = Decimal(haber) if haber else Decimal('0')
 
                 # Obtener 'Comp' inicial
                 comp = tipo_movimiento[0].upper()
 
                 # Calcular 'N°' correspondiente al 'Comp' actual
                 comp_numbers = []
-                for row in range(3, last_data_row + 1):
-                    cell_comp = ws.cell(row=row, column=2).value  # Columna 'B' para 'Comp'
-                    cell_number = ws.cell(row=row, column=3).value  # Columna 'C' para 'N°'
+                for row_num in range(3, last_data_row + 1):
+                    cell_comp = ws.cell(row=row_num, column=2).value  
+                    cell_number = ws.cell(row=row_num, column=3).value  
                     if cell_comp == comp and isinstance(cell_number, int):
                         comp_numbers.append(cell_number)
                 if comp_numbers:
@@ -229,15 +227,14 @@ def libro_diario(request):
             # Actualizar las fórmulas de suma en F1 y G1
             ws['F1'].value = f"=SUM(F3:F{new_row - 1})"
             ws['G1'].value = f"=SUM(G3:G{new_row - 1})"
-            
 
             # Guardar el archivo Excel
-            output= BytesIO()
+            output = BytesIO()
             wb.save(output)
             output.seek(0)
-            response=HttpResponse(
+            response = HttpResponse(
                 output,
-                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             )
             response['Content-Disposition'] = 'attachment; filename=LDE.xlsx'
             return response
