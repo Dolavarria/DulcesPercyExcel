@@ -8,7 +8,7 @@ import os
 from django.conf import settings
 from decimal import Decimal
 from datetime import datetime
-
+from io import BytesIO
 def descargar_libro(request, tipo):
     if tipo == "ventas":
         path = os.path.join(settings.BASE_DIR, "REGISTRO DE VENTAS 2024.xlsx")
@@ -229,10 +229,18 @@ def libro_diario(request):
             # Actualizar las fórmulas de suma en F1 y G1
             ws['F1'].value = f"=SUM(F3:F{new_row - 1})"
             ws['G1'].value = f"=SUM(G3:G{new_row - 1})"
+            
 
             # Guardar el archivo Excel
-            wb.save(lde_path)
-            return redirect('libro_diario')
+            output= BytesIO()
+            wb.save(output)
+            output.seek(0)
+            response=HttpResponse(
+                output,
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+            )
+            response['Content-Disposition'] = 'attachment; filename=LDE.xlsx'
+            return response
     else:
         form = LibroDiarioForm()
     return render(request, 'libro_diario.html', {'form': form})
