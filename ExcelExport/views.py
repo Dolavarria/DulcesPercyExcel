@@ -17,6 +17,38 @@ def descargar_libro(request, tipo):
     elif tipo == "libro_diario":
         path = os.path.join(settings.BASE_DIR, "LDE.xlsx")
         filename = "LDE.xlsx"
+    elif tipo == "balance":
+        # Generar el archivo Balance a partir de la hoja 'Balance' en 'Contab 2024.xlsx'
+        contab_path = os.path.join(settings.BASE_DIR, "Contab 2024.xlsx")
+        if not os.path.exists(contab_path):
+            return HttpResponse("El archivo 'Contab 2024.xlsx' no existe.", status=404)
+
+        wb = openpyxl.load_workbook(contab_path,data_only=True)
+        if 'BALANCE' not in wb.sheetnames:
+            return HttpResponse("La hoja 'BALANCE' no existe en 'BALANCE.xlsx'.", status=404)
+
+        balance_sheet = wb['BALANCE']
+
+        # Crear un nuevo libro de Excel y copiar la hoja 'Balance'
+        new_wb = openpyxl.Workbook()
+        new_ws = new_wb.active
+        new_ws.title = 'BALANCE'
+
+        for row in balance_sheet.iter_rows(values_only=True):
+            new_ws.append(row)
+
+        # Guardar el nuevo libro en un objeto BytesIO
+        from io import BytesIO
+        output = BytesIO()
+        new_wb.save(output)
+        output.seek(0)
+
+        response = HttpResponse(
+            output,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename=Balance.xlsx'
+        return response
     else:
         return HttpResponse("Tipo de archivo no válido.", status=400)
 
@@ -199,6 +231,6 @@ def ver_registro(request):
         {'nombre': 'Registro de Ventas 2024', 'tipo': 'ventas'},
         {'nombre': 'Registro de Compras 2024', 'tipo': 'compras'},
         {'nombre': 'Libro Diario', 'tipo': 'libro_diario'},
-        # Puedes agregar más libros si los tienes
+        {'nombre': 'Balance', 'tipo': 'balance'},
     ]
     return render(request, 'ver_registro.html', {'libros': libros})
