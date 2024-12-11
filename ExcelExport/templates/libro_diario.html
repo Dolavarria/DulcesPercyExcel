@@ -50,7 +50,8 @@
 </head>
 <body>
     <div class="container">
-        <h2>Libro Diario</h2>
+        <h1>Editar Libro Diario</h1>
+        <a href="{% url 'home' %}" class="btn btn-secondary">Volver</a>
         <div class="table-responsive">
             <form id="libroDiarioForm" method="post">
                 {% csrf_token %}
