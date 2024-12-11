@@ -80,7 +80,7 @@ class LibroDiarioForm(forms.Form):
                     if codigo and cuenta:
                         codigo_formateado = int(codigo)
                         opcion = f"{codigo_formateado}- {cuenta}"
-                        opciones.append((opcion, opcion))
+                        opciones.append((cuenta, opcion))
                 self.fields['nombre_cuenta'].choices = opciones
             else:
                 print("La hoja 'CUENTAS' no existe en el libro.")
