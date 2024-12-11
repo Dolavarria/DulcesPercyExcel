@@ -7,6 +7,8 @@ from django.http import FileResponse
 import os
 from django.conf import settings
 from decimal import Decimal
+from datetime import datetime
+
 def descargar_libro(request, tipo):
     if tipo == "ventas":
         path = os.path.join(settings.BASE_DIR, "REGISTRO DE VENTAS 2024.xlsx")
@@ -169,50 +171,64 @@ def libro_diario(request):
             # Buscar la última fila con datos reales a partir de la fila 3
             last_data_row = None
             for row in range(3, ws.max_row + 1):
-                cell_value = ws[f"A{row}"].value  # Usamos la columna 'A' (fecha) como referencia
+                cell_value = ws.cell(row=row, column=1).value  # Columna 'A' para fecha
                 if cell_value is None:
-                    last_data_row = row - 1  # La fila anterior tiene datos
+                    last_data_row = row - 1
                     break
-            else:
-                # Si no hay filas vacías hasta el final, la última fila con datos es ws.max_row
+            if last_data_row is None:
                 last_data_row = ws.max_row
 
             # Determinar la nueva fila para insertar datos
             new_row = last_data_row + 1
 
-            # Calcular el total (suma de debe y haber)
-            debe = form.cleaned_data['debe'] or Decimal('0')
-            haber = form.cleaned_data['haber'] or Decimal('0')
+            # Obtener los valores del formulario
+            fechas = request.POST.getlist('fecha')
+            tipo_movimientos = request.POST.getlist('tipo_movimiento')
+            nombre_cuentas = request.POST.getlist('nombre_cuenta')
+            glosas = request.POST.getlist('glosa')
+            debes = request.POST.getlist('debe')
+            habers = request.POST.getlist('haber')
 
-            # Obtener 'Comp' inicial (primera letra del tipo de movimiento)
-            tipo_movimiento = form.cleaned_data['tipo_movimiento']
-            comp = tipo_movimiento[0].upper()  # 'T', 'E', 'I'
+            # Insertar cada registro en el Excel
+            for i in range(len(fechas)):
+                fecha = fechas[i]
+                fecha_formateada = datetime.strptime(fecha, '%Y-%m-%d').strftime('%d-%m-%Y')
 
-            # Calcular 'N°' correspondiente al 'Comp' actual
-            # Inicializamos el contador en 1 si no hay registros previos
-            comp_numbers = []
-            for row in range(3, last_data_row + 1):
-                cell_comp = ws[f"B{row}"].value  # Columna 'B' (Comp)
-                cell_number = ws[f"C{row}"].value  # Columna 'C' (N°)
-                if cell_comp == comp and isinstance(cell_number, int):
-                    comp_numbers.append(cell_number)
-            if comp_numbers:
-                next_number = max(comp_numbers) + 1
-            else:
-                next_number = 1
+                tipo_movimiento = tipo_movimientos[i]
+                nombre_cuenta = nombre_cuentas[i]
+                glosa = glosas[i]
+                debe = Decimal(debes[i]) if debes[i] else Decimal('0')
+                haber = Decimal(habers[i]) if habers[i] else Decimal('0')
 
-            # Insertar los datos en la nueva fila
-            ws[f"A{new_row}"] = form.cleaned_data['fecha']
-            ws[f"B{new_row}"] = comp  # Columna 'Comp'
-            ws[f"C{new_row}"] = next_number  # Columna 'N°'
-            ws[f"D{new_row}"] = form.cleaned_data['nombre_cuenta']
-            ws[f"E{new_row}"] = form.cleaned_data['glosa']
-            ws[f"F{new_row}"] = debe
-            ws[f"G{new_row}"] = haber
+                # Obtener 'Comp' inicial
+                comp = tipo_movimiento[0].upper()
 
-            # Actualizar las fórmulas en F1 y G1
-            ws['F1'] = f"=SUM(F3:F{new_row})"
-            ws['G1'] = f"=SUM(G3:G{new_row})"
+                # Calcular 'N°' correspondiente al 'Comp' actual
+                comp_numbers = []
+                for row in range(3, last_data_row + 1):
+                    cell_comp = ws.cell(row=row, column=2).value  # Columna 'B' para 'Comp'
+                    cell_number = ws.cell(row=row, column=3).value  # Columna 'C' para 'N°'
+                    if cell_comp == comp and isinstance(cell_number, int):
+                        comp_numbers.append(cell_number)
+                if comp_numbers:
+                    next_number = max(comp_numbers) + 1
+                else:
+                    next_number = 1
+
+                # Insertar los datos en la nueva fila
+                ws.cell(row=new_row, column=1).value = fecha_formateada
+                ws.cell(row=new_row, column=2).value = comp
+                ws.cell(row=new_row, column=3).value = next_number
+                ws.cell(row=new_row, column=4).value = nombre_cuenta
+                ws.cell(row=new_row, column=5).value = glosa
+                ws.cell(row=new_row, column=6).value = debe
+                ws.cell(row=new_row, column=7).value = haber
+
+                new_row += 1  # Incrementar para la siguiente fila
+
+            # Actualizar las fórmulas de suma en F1 y G1
+            ws['F1'].value = f"=SUM(F3:F{new_row - 1})"
+            ws['G1'].value = f"=SUM(G3:G{new_row - 1})"
 
             # Guardar el archivo Excel
             wb.save(lde_path)
@@ -220,7 +236,6 @@ def libro_diario(request):
     else:
         form = LibroDiarioForm()
     return render(request, 'libro_diario.html', {'form': form})
-
 def home(request):
     return render(request, 'home.html')
 
