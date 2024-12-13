@@ -20,8 +20,8 @@ def descargar_libro(request, tipo):
         path = os.path.join(settings.BASE_DIR, "REGISTRO DE COMPRAS 2024.xlsx")
         filename = "REGISTRO DE COMPRAS 2024.xlsx"
     elif tipo == "libro_diario":
-        path = os.path.join(settings.BASE_DIR, "LDE.xlsx")
-        filename = "LDE.xlsx"
+        path = os.path.join(settings.BASE_DIR, "DulcesPercy.xlsx")
+        filename = "DulcesPercy.xlsx"
     elif tipo == "balance":
         # Generar el archivo Balance a partir de la hoja 'Balance' en 'Contab 2024.xlsx'
         contab_path = os.path.join(settings.BASE_DIR, "Contab 2024.xlsx")
@@ -59,11 +59,11 @@ def descargar_libro(request, tipo):
     else:
         return HttpResponse("El archivo no existe.", status=404)
 
-def libro_diario(request):
+def libro_diario(request):  
     if request.method == "POST":
         form = LibroDiarioForm(request.POST)
         if form.is_valid():
-            lde_path = os.path.join(settings.BASE_DIR, "LDE.xlsx")
+            lde_path = os.path.join(settings.BASE_DIR, "DulcesPercy.xlsx")
             wb = openpyxl.load_workbook(lde_path)
             ws = wb.active
 
@@ -135,7 +135,7 @@ def libro_diario(request):
                 output,
                 content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             )
-            response['Content-Disposition'] = 'attachment; filename=LDE.xlsx'
+            response['Content-Disposition'] = 'attachment; filename=DulcesPercy.xlsx'
             return response
     else:
         form = LibroDiarioForm()
